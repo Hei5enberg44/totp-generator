@@ -13,9 +13,13 @@ app.get('/', async (req, res) => {
 
 app.get('/generateTOTP', async (req, res) => {
     const name = req.query.name
-    const length = req.query.length ?? 10
+    const length = req.query.length ? parseInt(req.query.length) : 10
 
     if(name) {
+        if(length < 5 && length > 20) {
+            res.status(400).send('La longueur du secret doit être compris entre 5 et 20')
+        }
+
         const secret = speakeasy.generateSecret({
             length: length,
             name: name
@@ -28,7 +32,7 @@ app.get('/generateTOTP', async (req, res) => {
             secret: secret.base32
         })
     } else {
-        res.status(404).send('Nom manquant dans la requête')
+        res.status(400).send('Nom manquant dans la requête')
     }
 })
 
@@ -44,7 +48,7 @@ app.post('/validateToken', (req, res) => {
         })
         res.json({ valid: tokenValidates })
     } else {
-        res.status(404).send('Token manquant dans la requête')
+        res.status(400).send('Token manquant dans la requête')
     }
 })
 
