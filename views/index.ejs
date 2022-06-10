@@ -112,7 +112,7 @@
 
             new Promise(async (resolve, reject) => {
                 try {
-                    const request = await fetch('http://totp.weezle.xyz/validateToken', {
+                    const request = await fetch('/validateToken', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
