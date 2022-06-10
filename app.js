@@ -7,27 +7,29 @@ const port = 3002
 app.set('view engine', 'ejs')
 app.use(express.json())
 
-function validateToken(token, secret) {
-    const tokenValidates = speakeasy.totp.verify({
-        secret: secret,
-        encoding: 'base32',
-        token: token
-    })
-    return tokenValidates
-}
-
 app.get('/', async (req, res) => {
-    const secret = speakeasy.generateSecret({
-        length: 10,
-        name: 'SylverApp'
-    })
+    res.render('index')
+})
 
-    const qr = await QRCode.toDataURL(secret.otpauth_url)
+app.get('/generateTOTP', async (req, res) => {
+    const name = req.query.name
+    const length = req.query.length ?? 10
 
-    res.render('index', {
-        qrcode: qr,
-        secret: secret.base32
-    })
+    if(name) {
+        const secret = speakeasy.generateSecret({
+            length: length,
+            name: name
+        })
+
+        const qr = await QRCode.toDataURL(secret.otpauth_url)
+
+        res.json({
+            qrcode: qr,
+            secret: secret.base32
+        })
+    } else {
+        res.status(404).send('Nom manquant dans la requête')
+    }
 })
 
 app.post('/validateToken', (req, res) => {
@@ -35,7 +37,12 @@ app.post('/validateToken', (req, res) => {
     const secret = req.body.secret
 
     if(token && secret) {
-        res.json({ valid: validateToken(token, secret) })
+        const tokenValidates = speakeasy.totp.verify({
+            secret: secret,
+            encoding: 'base32',
+            token: token
+        })
+        res.json({ valid: tokenValidates })
     } else {
         res.status(404).send('Token manquant dans la requête')
     }

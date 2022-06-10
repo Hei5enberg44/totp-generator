@@ -5,31 +5,41 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/css/tabler.min.css">
-    <title>Générer un nouveau code OTP</title>
+    <title>Générer un nouveau code TOTP</title>
 </head>
 <body class="border-top-wide border-primary d-flex flex-column">
     <div class="page page-center">
         <div class="container-tight py-4">
             <div class="card card-md">
                 <div class="card-body">
-                    <div class="card-title text-center mb-3">Générer un nouveau code OTP</div>
-
-                    <div class="mb-3 text-center">
-                        <img src="<%= qrcode %>">
+                    <div class="text-center">
+                        <div class="card-title mb-3">Générer un nouveau code TOTP</div>
+                    
                         <div class="input-group">
-                            <span class="input-group-text">Secret</span>
-                            <input type="text" class="form-control form-control-sm" id="secret" value="<%= secret %>" readonly>
-                            <button class="btn btn-white btn-sm align-baseline" onclick="copySecret(this)">Copier</button>
+                            <span class="input-group-text">Nom</span>
+                            <input type="text" class="form-control form-control-sm" id="name" autocomplete="off">
+                            <button class="btn btn-primary btn-sm" onclick="generateTOTP()">Générer</button>
                         </div>
-                        <div class="text-muted mt-2">Scannez cette image avec votre application 2FA. Vous verrez un code à 6 chiffres sur votre écran. Entrez ce code ci-dessous pour vérifier votre téléphone et compléter l'authentification.</div>
-                    </div>
 
-                    <div class="mb-3 d-flex justify-content-center">
-                        <input type="text" id="token" class="form-control text-center w-50">
-                    </div>
+                        <div class="d-none" id="totp">
+                            <img src="" id="qrcode">
 
-                    <div>
-                        <button class="btn btn-primary w-100" onclick="validateToken()">Tester</button>
+                            <div class="input-group">
+                                <span class="input-group-text">Secret</span>
+                                <input type="text" class="form-control form-control-sm" id="secret" value="" readonly>
+                                <button class="btn btn-white btn-sm align-baseline" onclick="copySecret(this)">Copier</button>
+                            </div>
+                            <div class="text-muted my-3">Scannez cette image avec votre application 2FA. Vous verrez un code à 6 chiffres sur votre écran. Entrez ce code ci-dessous pour vérifier votre téléphone et compléter l'authentification.</div>
+
+                            <div class="mb-3 d-flex justify-content-center">
+                                <div class="input-group w-50">
+                                    <span class="input-group-text">Code</span>
+                                    <input type="text" id="token" class="form-control text-center">
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary w-100" onclick="validateToken()">Tester</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -40,12 +50,50 @@
     <script src="https://unpkg.com/imask"></script>
 
     <script>
-        const $input = document.querySelector('#token')
+        const $name = document.querySelector('#name')
+        const $totp = document.querySelector('#totp')
+        const $qrcode = document.querySelector('#qrcode')
         const $secret = document.querySelector('#secret')
+        const $input = document.querySelector('#token')
 
         const $token = IMask($input, {
             mask: '000 000'
         })
+
+        function generateTOTP() {
+            const name = $name.value
+
+            if(name !== '') {
+                $name.classList.remove('is-invalid')
+
+                new Promise(async (resolve, reject) => {
+                    try {
+                        const request = await fetch(`/generateTOTP?name=${encodeURIComponent(name)}`, {
+                            method: 'GET'
+                        })
+
+                        if(request.ok) {
+                            const response = await request.json()
+                            $input.classList.remove('is-invalid')
+                            resolve(response)
+                        } else {
+                            $input.classList.remove('is-invalid')
+                            reject()
+                        }
+                    } catch(err) {
+                        reject(err)
+                    }
+                }).then(totp => {
+                    $qrcode.setAttribute('src', totp.qrcode)
+                    $secret.value = totp.secret
+                    $totp.classList.remove('d-none')
+                }).catch(err => {
+                    $input.classList.add('is-invalid')
+                })
+            } else {
+                $name.classList.add('is-invalid')
+            }
+        }
 
         function copySecret($btn) {
             $secret.select()
@@ -62,9 +110,9 @@
             const token = $token.unmaskedValue
             const secret = $secret.value
 
-            return new Promise(async (resolve, reject) => {
+            new Promise(async (resolve, reject) => {
                 try {
-                    const request = await fetch('/validateToken', {
+                    const request = await fetch('http://totp.weezle.xyz/validateToken', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -76,13 +124,21 @@
                     })
 
                     if(request.ok) {
-                        $input.classList.remove('is-invalid')
-                        $input.classList.add('is-valid')
+                        const response = await request.json()
+                        if(response.valid) {
+                            $input.classList.remove('is-invalid')
+                            $input.classList.add('is-valid')
+                        } else {
+                            $input.classList.add('is-invalid')
+                        }
+                        resolve()
                     } else {
                         $input.classList.add('is-invalid')
+                        reject()
                     }
                 } catch(err) {
                     $input.classList.add('is-invalid')
+                    reject(err)
                 }
             })
         }
