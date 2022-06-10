@@ -18,19 +18,19 @@ app.get('/generateTOTP', async (req, res) => {
     if(name) {
         if(length < 8 || length > 48) {
             res.status(400).send('La longueur du secret doit être compris entre 8 et 48')
+        } else {
+            const secret = speakeasy.generateSecret({
+                length: length,
+                name: name
+            })
+
+            const qr = await QRCode.toDataURL(secret.otpauth_url)
+
+            res.json({
+                qrcode: qr,
+                secret: secret.base32
+            })
         }
-
-        const secret = speakeasy.generateSecret({
-            length: length,
-            name: name
-        })
-
-        const qr = await QRCode.toDataURL(secret.otpauth_url)
-
-        res.json({
-            qrcode: qr,
-            secret: secret.base32
-        })
     } else {
         res.status(400).send('Nom manquant dans la requête')
     }
