@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/css/tabler.min.css">
+    <title>Générer un nouveau code OTP</title>
+</head>
+<body class="border-top-wide border-primary d-flex flex-column">
+    <div class="page page-center">
+        <div class="container-tight py-4">
+            <div class="card card-md">
+                <div class="card-body">
+                    <div class="card-title text-center mb-3">Générer un nouveau code OTP</div>
+
+                    <div class="mb-3 text-center">
+                        <img src="<%= qrcode %>">
+                        <div class="input-group">
+                            <span class="input-group-text">Secret</span>
+                            <input type="text" class="form-control form-control-sm" id="secret" value="<%= secret %>" readonly>
+                            <button class="btn btn-white btn-sm align-baseline" onclick="copySecret(this)">Copier</button>
+                        </div>
+                        <div class="text-muted mt-2">Scannez cette image avec votre application 2FA. Vous verrez un code à 6 chiffres sur votre écran. Entrez ce code ci-dessous pour vérifier votre téléphone et compléter l'authentification.</div>
+                    </div>
+
+                    <div class="mb-3 d-flex justify-content-center">
+                        <input type="text" id="token" class="form-control text-center w-50">
+                    </div>
+
+                    <div>
+                        <button class="btn btn-primary w-100" onclick="validateToken()">Tester</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/js/tabler.min.js"></script>
+    <script src="https://unpkg.com/imask"></script>
+
+    <script>
+        const $input = document.querySelector('#token')
+        const $secret = IMask($input, {
+            mask: '000 000'
+        })
+
+        function copySecret($btn) {
+            const $secret = document.querySelector('#secret')
+            $secret.select()
+            document.execCommand('copy')
+
+            const oldValue = $btn.innerText
+            $btn.innerText = 'Copié !'
+            setTimeout(function() {
+                $btn.innerText = oldValue
+            }, 1000)
+        }
+
+        function validateToken() {
+            const token = $secret.unmaskedValue
+
+            fetch('/validateToken', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token: token
+                })
+            }).then(res => {
+                return res.json()
+            }).then(res => {
+                const valid = res.valid
+
+                if(!valid) {
+                    $input.classList.add('is-invalid')
+                } else {
+                    $input.classList.remove('is-invalid')
+                    $input.classList.add('is-valid')
+                }
+            }).catch(err => {
+                $input.classList.add('is-invalid')
+            })
+        }
+    </script>
+</body>
+</html>
