@@ -41,12 +41,13 @@
 
     <script>
         const $input = document.querySelector('#token')
-        const $secret = IMask($input, {
+        const $secret = document.querySelector('#secret')
+
+        const $token = IMask($input, {
             mask: '000 000'
         })
 
         function copySecret($btn) {
-            const $secret = document.querySelector('#secret')
             $secret.select()
             document.execCommand('copy')
 
@@ -58,29 +59,31 @@
         }
 
         function validateToken() {
-            const token = $secret.unmaskedValue
+            const token = $token.unmaskedValue
+            const secret = $secret.value
 
-            fetch('/validateToken', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    token: token
-                })
-            }).then(res => {
-                return res.json()
-            }).then(res => {
-                const valid = res.valid
+            return new Promise(async (resolve, reject) => {
+                try {
+                    const request = await fetch('/validateToken', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            token: token,
+                            secret: secret
+                        })
+                    })
 
-                if(!valid) {
+                    if(request.ok) {
+                        $input.classList.remove('is-invalid')
+                        $input.classList.add('is-valid')
+                    } else {
+                        $input.classList.add('is-invalid')
+                    }
+                } catch(err) {
                     $input.classList.add('is-invalid')
-                } else {
-                    $input.classList.remove('is-invalid')
-                    $input.classList.add('is-valid')
                 }
-            }).catch(err => {
-                $input.classList.add('is-invalid')
             })
         }
     </script>
